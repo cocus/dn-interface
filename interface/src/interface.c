@@ -7,8 +7,8 @@
 
 #include "interface.h"
 #include "global.h"
-#include <Windows.h>
 #include "pitch.h"
+#include "key.h"
 #include "dn2000fmkii.h"
 #include "dn2500f.h"
 #include "dn-interface.h"
@@ -19,10 +19,15 @@ PlayPauseCallback _playpausecallbackhandler = 0;
 CueCallback _cuecallbackhandler = 0;
 SearchCallback _searchcallbackhandler = 0;
 ScanCallback _scancallbackhandler = 0;
+OpenCloseCallback _openclosecallbackhandler = 0;
+TrackChangeCallback _trackchangecallbackhandler = 0;
+IndexChangeCallback _indexchangecallbackhandler = 0;
+ReverseCallback _reversecallbackhandler = 0;
+KeyChangeCallback _keychangecallbackhandler = 0;
 
 byte _model = -1;
 
-_declspec(dllexport) int Init(char *ComPort, byte Model)
+EXPORT_DECLSPEC int Init(const char *ComPort, byte Model)
 {
 	switch (Model)
 	{
@@ -38,37 +43,63 @@ _declspec(dllexport) int Init(char *ComPort, byte Model)
 	return ERR_MODEL_UNSUPPORTED;
 }
 
-_declspec(dllexport) void SetPitchChangeCallback(PitchChangeCallback handler)
+EXPORT_DECLSPEC void SetPitchChangeCallback(PitchChangeCallback handler)
 {
 	_pitchchangecallbackhandler = handler;
 }
 
-_declspec(dllexport) void SetTimeModeCallback(TimeModeCallback handler)
+EXPORT_DECLSPEC void SetTimeModeCallback(TimeModeCallback handler)
 {
 	_timemodecallbackhandler = handler;
 }
 
-_declspec(dllexport) void SetPlayPauseCallback(PlayPauseCallback handler)
+EXPORT_DECLSPEC void SetPlayPauseCallback(PlayPauseCallback handler)
 {
 	_playpausecallbackhandler = handler;
 }
 
-_declspec(dllexport) void SetCueCallback(CueCallback handler)
+EXPORT_DECLSPEC void SetCueCallback(CueCallback handler)
 {
 	_cuecallbackhandler = handler;
 }
 
-_declspec(dllexport) void SetSearchCallback(SearchCallback handler)
+EXPORT_DECLSPEC void SetSearchCallback(SearchCallback handler)
 {
 	_searchcallbackhandler = handler;
 }
 
-_declspec(dllexport) void SetScanCallback(SearchCallback handler)
+EXPORT_DECLSPEC void SetScanCallback(SearchCallback handler)
 {
 	_scancallbackhandler = handler;
 }
 
-_declspec(dllexport) void Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
+EXPORT_DECLSPEC void SetOpenCloseCallback(OpenCloseCallback handler)
+{
+	_openclosecallbackhandler = handler;
+}
+
+EXPORT_DECLSPEC void SetTrackChangeCallback(TrackChangeCallback handler)
+{
+	_trackchangecallbackhandler = handler;
+}
+
+EXPORT_DECLSPEC void SetIndexChangeCallback(IndexChangeCallback handler)
+{
+	_indexchangecallbackhandler = handler;
+}
+
+EXPORT_DECLSPEC void SetReverseCallback(ReverseCallback handler)
+{
+	_reversecallbackhandler = handler;
+}
+
+EXPORT_DECLSPEC void SetKeyChangeCallback(KeyChangeCallback handler)
+{
+	_keychangecallbackhandler = handler;
+}
+
+
+EXPORT_DECLSPEC void Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
 {
 	switch (_model)
 	{
@@ -89,8 +120,8 @@ _declspec(dllexport) void Load(byte Deck, byte DurationMinutes, byte DurationSec
 		PlayState[Deck - 1] = DN2500F_PARAM_PAUSED;
 
 		dn2500f_load(Deck, DurationMinutes, DurationSeconds, DurationFrames);
-
-		if (TimeMode[Deck - 1] == DN2000FMKII_PARAM_ELAPSED)
+		break;
+		if (TimeMode[Deck - 1] == DN2500F_PARAM_ELAPSED)
 			dn2500f_cue(Deck, 0, 0, 0);
 		else
 			dn2500f_cue(Deck, DurationMinutes, DurationSeconds, DurationFrames);
@@ -98,13 +129,22 @@ _declspec(dllexport) void Load(byte Deck, byte DurationMinutes, byte DurationSec
 	}
 }
 
-_declspec(dllexport) void Cue(byte Deck, byte Minute, byte Second, byte Frame)
+EXPORT_DECLSPEC void Cue(byte Deck, byte Minute, byte Second, byte Frame)
 {
-	dn2000fmkii_cue(Deck, Minute, Second, Frame);
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
+		dn2000fmkii_cue(Deck, Minute, Second, Frame);
+		break;
+	case MODEL_DN2500F:
+		dn2500f_cue(Deck, Minute, Second, Frame);
+		break;
+	}
+
 	CueState[Deck - 1] = true;
 }
 
-_declspec(dllexport) void UpdateTime(byte Deck, byte Minute, byte Second, byte Frame)
+EXPORT_DECLSPEC void UpdateTime(byte Deck, byte Minute, byte Second, byte Frame)
 {
 	switch (_model)
 	{
@@ -113,36 +153,63 @@ _declspec(dllexport) void UpdateTime(byte Deck, byte Minute, byte Second, byte F
 		break;
 
 	case MODEL_DN2500F:
-		dn2500f_update_time(Deck, Minute, Second, Frame, true, CueState[Deck - 1], PlayState[Deck - 1] == DN2000FMKII_PARAM_PAUSED, PlayState[Deck - 1] == DN2000FMKII_PARAM_PLAYING);
+		dn2500f_update_time(Deck, Minute, Second, Frame, true, CueState[Deck - 1], PlayState[Deck - 1] == DN2500F_PARAM_PAUSED, PlayState[Deck - 1] == DN2500F_PARAM_PLAYING);
 		break;
 	}
 }
 
-_declspec(dllexport) void UpdateTimeMode(byte Deck, byte Mode)
+EXPORT_DECLSPEC void UpdateTimeMode(byte Deck, byte Mode)
 {
 	TimeMode[Deck - 1] = Mode;
 }
 
-_declspec(dllexport) void Play(byte Deck)
+EXPORT_DECLSPEC void Play(byte Deck)
 {
 	CueState[Deck - 1] = false;
-	PlayState[Deck - 1] = DN2000FMKII_PARAM_PLAYING;
-	dn2000fmkii_play(Deck);
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
+		PlayState[Deck - 1] = DN2000FMKII_PARAM_PLAYING;
+		dn2000fmkii_play(Deck);
+		break;
+	case MODEL_DN2500F:
+		PlayState[Deck - 1] = DN2500F_PARAM_PLAYING;
+
+		// TODO: impl
+		break;
+	}
 }
 
-_declspec(dllexport) void Pause(byte Deck)
+EXPORT_DECLSPEC void Pause(byte Deck)
 {
 	CueState[Deck - 1] = false;
-	PlayState[Deck - 1] = DN2000FMKII_PARAM_PLAYING;
-	dn2000fmkii_pause(Deck);
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
+		PlayState[Deck - 1] = DN2000FMKII_PARAM_PLAYING;
+		dn2000fmkii_pause(Deck);
+		break;
+	case MODEL_DN2500F:
+		PlayState[Deck - 1] = DN2500F_PARAM_PAUSED;
+		dn2500f_pause(Deck);
+		break;
+	}
 }
 
 void DoPlayPause(byte Deck)
 {
-	if (PlayState[Deck - 1] == DN2000FMKII_PARAM_PLAYING)
-		dn2000fmkii_pause(Deck);
-	else
-		dn2000fmkii_play(Deck);
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
+		if (PlayState[Deck - 1] == DN2000FMKII_PARAM_PLAYING)
+			dn2000fmkii_pause(Deck);
+		else
+			dn2000fmkii_play(Deck);
+		break;
+	case MODEL_DN2500F:
+		// TODO: impl
+		break;
+	}
 
 	if (_playpausecallbackhandler != 0)
 		_playpausecallbackhandler(Deck, PlayState[Deck - 1]);
@@ -220,4 +287,34 @@ void DoScan(byte Deck, byte Speed)
 
 	if (_scancallbackhandler != 0)
 		_scancallbackhandler(Deck, Direction, Speed);
+}
+
+void DoOpenClose(byte Deck)
+{
+	if (_openclosecallbackhandler != 0)
+		_openclosecallbackhandler(Deck);
+}
+
+void DoTrackChange(byte Deck, byte To)
+{
+	if (_trackchangecallbackhandler != 0)
+		_trackchangecallbackhandler(Deck, To);
+}
+
+void DoIndexChange(byte Deck, byte To, byte Direction)
+{
+	if (_indexchangecallbackhandler != 0)
+		_indexchangecallbackhandler(Deck, To, Direction);
+}
+
+void DoReverse(byte Deck)
+{
+	if (_reversecallbackhandler != 0)
+		_reversecallbackhandler(Deck);
+}
+
+void DoKeyChange(byte Deck, byte Mode, byte IsNegative, byte Key)
+{
+	if (_keychangecallbackhandler != 0)
+		_keychangecallbackhandler(Deck, Mode, KeyByteToFloat(IsNegative, Key));
 }

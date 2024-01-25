@@ -1,0 +1,14 @@
+vs/.vs
+vs/Debug
+vs/x64
+vs/packages
+monitor/.vs
+monitor/bin
+monitor/obj
+demo/player/dotnet/src/.vs
+demo/player/dotnet/src/bin
+demo/player/dotnet/src/obj
+demo/player/dotnet/src/packages
+demo/cpp_native/x64
+
+

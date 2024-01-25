@@ -23,10 +23,11 @@
 #define DN2500F_CMD_PLAY 0x44
 #define DN2500F_CMD_CUE 0x45
 #define DN2500F_CMD_PAUSE 0x4b
+#define DN2500F_CMD_GENERAL_STATUS_CHANGE 0x48
 #define DN2500F_CMD_SEARCH 0x47
 #define DN2500F_CMD_SCAN 0x46
 #define DN2500F_CMD_OPEN_CLOSE 0x4a
-#define DN2500F_CMD_OPEN_KEY 0x57
+#define DN2500F_CMD_KEY_CONTROL 0x57
 
 #define DN2500F_CMD_CUEING 0x4d
 #define DN2500F_CMD_TIME 0x49
@@ -57,7 +58,7 @@ typedef dn2500f_packet *pdn2500f_packet;
 
 
 /* Functions */
-int dn2500f_init(char *ComPort);
+int dn2500f_init(const char *ComPort);
 int dn2500f_load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
 int dn2500f_cue(byte Deck, byte Minute, byte Second, byte Frame);
 int dn2500f_unload(byte Deck);

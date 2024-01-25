@@ -45,6 +45,8 @@
             this.cmbxModel = new System.Windows.Forms.ComboBox();
             this.label6 = new System.Windows.Forms.Label();
             this.btnLog = new System.Windows.Forms.Button();
+            this.vScrollBar1 = new System.Windows.Forms.VScrollBar();
+            this.vScrollBar2 = new System.Windows.Forms.VScrollBar();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -160,7 +162,8 @@
             "COM7:",
             "COM8:",
             "COM9:",
-            "COM10:"});
+            "COM10:",
+            "COM260:"});
             this.cmbxPort.Location = new System.Drawing.Point(113, 35);
             this.cmbxPort.Name = "cmbxPort";
             this.cmbxPort.Size = new System.Drawing.Size(121, 21);
@@ -239,11 +242,29 @@
             this.btnLog.UseVisualStyleBackColor = true;
             this.btnLog.Click += new System.EventHandler(this.btnLog_Click);
             // 
+            // vScrollBar1
+            // 
+            this.vScrollBar1.Location = new System.Drawing.Point(128, 275);
+            this.vScrollBar1.Name = "vScrollBar1";
+            this.vScrollBar1.Size = new System.Drawing.Size(17, 80);
+            this.vScrollBar1.TabIndex = 9;
+            this.vScrollBar1.Scroll += new System.Windows.Forms.ScrollEventHandler(this.vScrollBar1_Scroll);
+            // 
+            // vScrollBar2
+            // 
+            this.vScrollBar2.Location = new System.Drawing.Point(549, 275);
+            this.vScrollBar2.Name = "vScrollBar2";
+            this.vScrollBar2.Size = new System.Drawing.Size(17, 80);
+            this.vScrollBar2.TabIndex = 9;
+            this.vScrollBar2.Scroll += new System.Windows.Forms.ScrollEventHandler(this.vScrollBar2_Scroll);
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(760, 264);
+            this.ClientSize = new System.Drawing.Size(760, 433);
+            this.Controls.Add(this.vScrollBar2);
+            this.Controls.Add(this.vScrollBar1);
             this.Controls.Add(this.btnLog);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.cmbxModel);
@@ -283,6 +304,8 @@
         private System.Windows.Forms.ComboBox cmbxModel;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Button btnLog;
+        private System.Windows.Forms.VScrollBar vScrollBar1;
+        private System.Windows.Forms.VScrollBar vScrollBar2;
     }
 }
 

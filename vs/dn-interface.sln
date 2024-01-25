@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2036
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34511.84
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dn-interface", "dn-interface.vcxproj", "{337A0B3F-F780-4320-A682-E821FF961934}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlayerDemo", "..\demo\player\dotnet\src\PlayerDemo.csproj", "{C37B5906-07FC-43F2-806C-89F4A48BF7D6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "monitor", "..\monitor\monitor.csproj", "{1BF76B6E-02A3-46A1-BA92-47EFAB8C5785}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpp_native", "..\demo\cpp_native\cpp_native.vcxproj", "{C500A845-4F17-4919-BA1D-B136C635BD56}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +55,18 @@ Global
 		{1BF76B6E-02A3-46A1-BA92-47EFAB8C5785}.Release|x64.Build.0 = Release|Any CPU
 		{1BF76B6E-02A3-46A1-BA92-47EFAB8C5785}.Release|x86.ActiveCfg = Release|Any CPU
 		{1BF76B6E-02A3-46A1-BA92-47EFAB8C5785}.Release|x86.Build.0 = Release|Any CPU
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Debug|Any CPU.Build.0 = Debug|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Debug|x64.ActiveCfg = Debug|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Debug|x64.Build.0 = Debug|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Debug|x86.ActiveCfg = Debug|Win32
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Debug|x86.Build.0 = Debug|Win32
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Release|Any CPU.ActiveCfg = Release|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Release|Any CPU.Build.0 = Release|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Release|x64.ActiveCfg = Release|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Release|x64.Build.0 = Release|x64
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Release|x86.ActiveCfg = Release|Win32
+		{C500A845-4F17-4919-BA1D-B136C635BD56}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

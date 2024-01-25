@@ -21,6 +21,11 @@ void DoPitchChange(byte Deck, byte Pitch);
 void DoTimeMode(byte Deck, byte Mode);
 void DoSearch(byte Deck, byte Speed);
 void DoScan(byte Deck, byte Speed);
+void DoOpenClose(byte Deck);
+void DoTrackChange(byte Deck, byte To);
+void DoIndexChange(byte Deck, byte To, byte Direction);
+void DoReverse(byte Deck);
+void DoKeyChange(byte Deck, byte Mode, byte IsNegative, byte Key);
 
 /* Var to hold the current time mode for the decks, either PARAM_ELAPSED or PARAM_REMAIN */
 byte TimeMode[2];

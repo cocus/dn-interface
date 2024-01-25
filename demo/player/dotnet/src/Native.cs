@@ -11,7 +11,7 @@ namespace PlayerDemo
     static class Native
     {
 //        private const string DLL_NAME = "dn-interface.dll";
-        private const string DLL_NAME = @"C:\Users\Pete\Documents\src\denon-dn-interface-code\trunk\interface\vs\Debug\dn-interface.dll";
+        private const string DLL_NAME = @"C:\Users\cocus\Downloads\denon-dn-interface-code-r15-trunk\vs\x64\Debug\dn-interface.dll";
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void PitchChangeCallback(byte Deck, float Pitch);

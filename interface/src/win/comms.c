@@ -31,7 +31,7 @@ void comms_set_packet_receive_func(comms_packet_receive_func func)
 	_comms_packet_receive = func;
 }
 
-int comms_init(char *port, int baud, int packetsize, comms_packet_receive_func func)
+int comms_init(const char *port, int baud, int packetsize, comms_packet_receive_func func)
 {
 	_packet_size = packetsize;
 	_comms_packet_receive = func;

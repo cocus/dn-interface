@@ -1,6 +1,10 @@
 #ifndef _DN_INTERFACE_H
 #define _DN_INTERFACE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 
 typedef unsigned char byte;
@@ -16,20 +20,42 @@ typedef void(*PlayPauseCallback)(byte Deck, bool IsPlaying);
 typedef void(*CueCallback)(byte Deck);
 typedef void(*SearchCallback)(byte Deck, byte Direction, byte Speed);
 typedef void(*ScanCallback)(byte Deck, byte Direction, byte Speed);
+typedef void(*OpenCloseCallback)(byte Deck);
+typedef void(*TrackChangeCallback)(byte Deck, byte To);
+typedef void(*IndexChangeCallback)(byte Deck, byte To, byte Direction);
+typedef void(*ReverseCallback)(byte Deck);
+typedef void(*KeyChangeCallback)(byte Deck, byte Mode, float Key);
+
+#ifdef DNINTERFACE_EXPORTS
+#define EXPORT_DECLSPEC    __declspec(dllexport)
+#else
+#define EXPORT_DECLSPEC    __declspec(dllimport)
+#endif
 
 /* Exported functions to register callbacks */
-_declspec(dllexport) void SetPitchChangeCallback(PitchChangeCallback handler);
-_declspec(dllexport) void SetTimeModeCallback(TimeModeCallback handler);
-_declspec(dllexport) void SetPlayPauseCallback(PlayPauseCallback handler);
-_declspec(dllexport) void SetCueCallback(CueCallback handler);
-_declspec(dllexport) void SetSearchCallback(SearchCallback handler);
-_declspec(dllexport) void SetScanCallback(SearchCallback handler);
+EXPORT_DECLSPEC void SetPitchChangeCallback(PitchChangeCallback handler);
+EXPORT_DECLSPEC void SetTimeModeCallback(TimeModeCallback handler);
+EXPORT_DECLSPEC void SetPlayPauseCallback(PlayPauseCallback handler);
+EXPORT_DECLSPEC void SetCueCallback(CueCallback handler);
+EXPORT_DECLSPEC void SetSearchCallback(SearchCallback handler);
+EXPORT_DECLSPEC void SetScanCallback(SearchCallback handler);
+EXPORT_DECLSPEC void SetOpenCloseCallback(OpenCloseCallback handler);
+EXPORT_DECLSPEC void SetTrackChangeCallback(TrackChangeCallback handler);
+EXPORT_DECLSPEC void SetIndexChangeCallback(IndexChangeCallback handler);
+EXPORT_DECLSPEC void SetReverseCallback(ReverseCallback handler);
+EXPORT_DECLSPEC void SetKeyChangeCallback(KeyChangeCallback handler);
 
 /* Exported functions to update the driver */
-_declspec(dllexport) int Init(char *ComPort, byte Model);
-_declspec(dllexport) void Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
-_declspec(dllexport) void UpdateTime(byte Deck, byte Minute, byte Second, byte Frame);
-_declspec(dllexport) void UpdateTimeMode(byte Deck, byte Mode);
-_declspec(dllexport) void Cue(byte Deck, byte Minute, byte Second, byte Frame);
+EXPORT_DECLSPEC int Init(const char *ComPort, byte Model);
+EXPORT_DECLSPEC void Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
+EXPORT_DECLSPEC void UpdateTime(byte Deck, byte Minute, byte Second, byte Frame);
+EXPORT_DECLSPEC void UpdateTimeMode(byte Deck, byte Mode);
+EXPORT_DECLSPEC void Cue(byte Deck, byte Minute, byte Second, byte Frame);
+EXPORT_DECLSPEC void Play(byte Deck);
+EXPORT_DECLSPEC void Pause(byte Deck);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_DN_INTERFACE_H */

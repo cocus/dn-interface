@@ -39,36 +39,43 @@ namespace PlayerDemo
         private void PitchChangeHandler(byte Deck, float Pitch)
         {
             _frmdebug.Log(string.Format("Deck {0}. Pitch change. New Pitch: {1}%", Deck, Pitch));
-        //    Decks[Deck - 1].ChangePitch(Pitch);
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].ChangePitch(Pitch);
         }
 
         private void TimeModeHandler(byte Deck, byte Mode)
         {
             _frmdebug.Log(string.Format("Deck {0}. Time mode change. New Mode: {1}", Deck, Mode == 1 ? "Elapsed" : "Remain"));
-          //  Decks[Deck - 1].ChangeTime(Mode);        
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].ChangeTime(Mode);        
         }
 
         private void PlayPauseHandler(byte Deck)
         {
             _frmdebug.Log(string.Format("Deck {0}. Play/Pause", Deck));
-            // Decks[Deck - 1].PlayPause();
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].PlayPause();
         }
 
         private void CueHandler(byte Deck)
         {
-
-           // Decks[Deck - 1].Cue();
+            _frmdebug.Log(string.Format("Deck {0}. Cue", Deck));
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].Cue();
         }
 
         private void ScanHandler(byte Deck, byte Direction, byte Speed)
         {
             _frmdebug.Log(string.Format("Deck {0}. Scan change. New Direction: {1}, Speed: {2}", Deck, Direction, Speed));
-            // Decks[Deck - 1].Scan(Direction, Speed);
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].Scan(Direction, Speed);
         }
 
         private void SearchHandler(byte Deck, byte Direction, byte Speed)
         {
-          //  Decks[Deck - 1].Search(Direction, Speed);
+            _frmdebug.Log(string.Format("Deck {0}. SearchHandler, {1} {2}", Deck, Direction, Speed));
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].Search(Direction, Speed);
         }
       
         private void btnInit_Click(object sender, EventArgs e)
@@ -93,6 +100,7 @@ namespace PlayerDemo
             btnInit.Enabled = false;
 
             Native.UpdateTime(1, 11, 22, 33);
+            Native.UpdateTime(2, 11, 22, 33);
         }
        
         private void btnOpen1_Click(object sender, EventArgs e)
@@ -136,6 +144,16 @@ namespace PlayerDemo
         private void btnLog_Click(object sender, EventArgs e)
         {
             _frmdebug.Show();            
+        }
+
+        private void vScrollBar1_Scroll(object sender, ScrollEventArgs e)
+        {
+            Decks[0].Volume(vScrollBar1.Value / 100.0f);
+        }
+
+        private void vScrollBar2_Scroll(object sender, ScrollEventArgs e)
+        {
+            Decks[1].Volume(vScrollBar1.Value / 100.0f);
         }
     }
 }

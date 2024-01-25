@@ -88,6 +88,11 @@ namespace PlayerDemo
             }
         }
 
+        public void Volume(float Volume)
+        {
+            Bass.BASS_ChannelSetAttribute(BassStream, BASSAttribute.BASS_ATTRIB_VOL, Volume);
+        }
+
         public void ChangePitch(float NewPitchPercent)
         {
             float targetsamplerate = OrigSampleRate + ((OrigSampleRate / 100) * NewPitchPercent);
@@ -211,6 +216,8 @@ namespace PlayerDemo
             CuePos = 0;
 
             IsPlaying = false;
+
+            UpdateTime();
         }
     }
 }
