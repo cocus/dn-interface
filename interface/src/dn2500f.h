@@ -34,11 +34,14 @@
 #define DN2500F_CMD_TRACK_POSITION 0x44
 
 /* Deck commands */
+#define	DN2500F_DECK_CMD_LOAD_CD 0x42
 #define	DN2500F_DECK_CMD_DRAWER 0x43
+#define DN2500F_DECK_TRACK_POSITION 0x44
+#define	DN2500F_DECK_CMD_CUE 0x45
 
 /* Remote parameters */
 #define DN2500F_PARAM_PLAYING 0x05
-#define DN2500F_PARAM_STOPPED 0xaa
+#define DN2500F_PARAM_STOPPED 0x09
 #define DN2500F_PARAM_CUED 0xa0
 #define DN2500F_PARAM_ELAPSED 0x00
 #define DN2500F_PARAM_REMAIN 0x01
@@ -52,6 +55,37 @@
 #define DN2500F_PARAM_PAUSED_PLAYING 0x06
 
 
+
+typedef enum
+{
+    MODE_REMAIN = 1,
+    MODE_ELAPSED = 2, /* ? */
+} DN2500F_TIMEMODE;
+
+typedef enum
+{
+    MODE_SINGLE = 0,
+    MODE_CONTINUE = 4, /* ? */
+} DN2500F_PLAYMODE;
+
+typedef enum
+{
+    STATUS_NOT_LOADED = 2,
+    STATUS_STOPPED = 9,
+    STATUS_CUED = 4,
+    STATUS_PAUSED = 3,
+    STATUS_PLAYING = 5,
+    STATUS_PAUSED_PLAYING = 6,
+    STATUS_INVALID = 0xff,
+} DN2500F_PLAYSTATUS;
+
+typedef struct
+{
+    byte Minute;
+    byte Second;
+    byte Frame;
+} DN2500F_TRIPLE_POS;
+
 /* DN2500F packet */
 typedef byte dn2500f_packet[DN2500F_PACKET_SIZE];
 typedef dn2500f_packet *pdn2500f_packet;
@@ -60,10 +94,18 @@ typedef dn2500f_packet *pdn2500f_packet;
 /* Functions */
 int dn2500f_init(const char *ComPort);
 int dn2500f_load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
+int dn2500f_start_cueing(byte Deck);
 int dn2500f_cue(byte Deck, byte Minute, byte Second, byte Frame);
 int dn2500f_unload(byte Deck);
-int dn2500f_update_time(byte Deck, byte Minute, byte Second, byte Frame, bool IsLoaded, bool IsCued, bool IsPaused, bool IsPlaying);
+int dn2500f_update_time(byte Deck);
 int dn2500f_play(byte Deck);
 int dn2500f_pause(byte Deck);
+
+
+int dn2500f_set_current_time(byte Deck, byte Minutes, byte Seconds, byte Frames);
+int dn2500f_set_play_mode(byte Deck, DN2500F_PLAYMODE Mode);
+int dn2500f_set_time_mode(byte Deck, DN2500F_TIMEMODE Mode);
+
+DN2500F_PLAYSTATUS dn2500f_get_deck_play_stats(byte Deck);
 
 #endif /* !_DN2500F_H */

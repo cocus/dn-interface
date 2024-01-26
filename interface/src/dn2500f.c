@@ -18,39 +18,13 @@
 #include "comms.h"
 #include "bcd.h"
 
-/*
-const byte KEY_TABLE_BYTES[256] = {
-	
 
-
-*/
-
-void dn2500f_process_packet(ppacket packet);
-
-int dn2500f_init(const char *ComPort)
-{
-	comms_init(ComPort, DN2500F_BAUD_RATE, DN2500F_PACKET_SIZE, dn2500f_process_packet);
-
-	/* Clear the deck states */
-	TimeMode[0] = DN2500F_PARAM_ELAPSED;
-	TimeMode[1] = DN2500F_PARAM_ELAPSED;
-	PlayState[0] = DN2500F_PARAM_PAUSED;
-	PlayState[1] = DN2500F_PARAM_PAUSED;
-	CueState[0] = false;
-	CueState[1] = false;
-
-	/* Required for the remote to accept commands */
-	return dn2500f_init_decks();
-}
 
 void dn2500f_checksum(dn2500f_packet packet)
 {
-//	dn2500f_packet p = packet;
 	unsigned short checksum =
 		packet[0] + packet[1] + packet[2] + packet[3] + packet[4] + packet[5] +
 		packet[6] + packet[7] + packet[8] + packet[9] + packet[10];
-//*p[0] += *p[1] += *p[2] += *p[3] += *p[4] += *p[5] +=
-//*p[6] += *p[7] += *p[8] += *p[9] += *p[10];
 	packet[11] = (byte)(checksum >> 8);
 	packet[12] = (byte)checksum;
 }
@@ -125,217 +99,405 @@ void dn2500f_process_packet(ppacket packet)
 }
 
 
-int dn2500f_cue(byte Deck, byte Minute, byte Second, byte Frame)
+
+typedef enum
 {
-	if (Deck != 1 && Deck != 2)
-		return ERR_INVALID_DECK;
+    NO_INIT = 0,
+    NOT_LOADED,
+    LOADING_TRACK,
+    CUEING,
+    CUE_MODE,
+    PLAY_MODE,
+    PAUSE_WHILE_PLAYING_MODE,
+} DN2500F_STATE;
 
-	/* Send a "going to cue point" packet to the remote. This flashes the Cue light. */
-	/* 01 45 00 00 02 00 00 00 00 00 00 00 48 */
-	dn2500f_packet packet = { 0 };
-	packet[0] = Deck;
-	packet[1] = DN2500F_CMD_CUE;
-	packet[3] = 0x01; /* ? */
+struct DN2500_DECK
+{
+    DN2500F_STATE state;
+    /* Var to hold the current time mode for the decks, either PARAM_ELAPSED or PARAM_REMAIN */
+    DN2500F_TIMEMODE TimeMode;
+    /* Var to hold the current play mode for the decks, either PARAM_SINGLE or PARAM_CONTINUE */
+    DN2500F_PLAYMODE PlayMode;
+    /* Var to hold the current play state for the decks, either PARAM_PLAYING or PARAM_PAUSED */
+    DN2500F_PLAYSTATUS PlayState;
 
-	dn2500f_checksum(packet);
-	comms_send((ppacket)&packet);
-	Sleep(14);
+    DN2500F_TRIPLE_POS CurrentPosition;
+    byte CurrentTrack;
 
-//	/* The cue has been completed. Update the time display. This sets the Cue light to solid. */
-	dn2500f_update_time(Deck, Minute, Second, Frame, true, true, false, false);
-//
-	return ERR_OK;
+    DN2500F_TRIPLE_POS TotalLength;
+    byte TotalTracks;
+
+} decks[2] =
+{ {NO_INIT, MODE_REMAIN, MODE_SINGLE, STATUS_NOT_LOADED, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME}, DN2500F_PARAM_NO_TRACK, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME}, DN2500F_PARAM_NO_TRACK },
+  {NO_INIT, MODE_REMAIN, MODE_SINGLE, STATUS_NOT_LOADED, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME }, DN2500F_PARAM_NO_TRACK, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME }, DN2500F_PARAM_NO_TRACK } };
+
+bool dn2500f_cmd42(byte Deck, byte arg1, byte NumTracks, byte TotalMinutes, byte TotalSeconds, byte TotalFrames)
+{
+    dn2500f_packet packet = { 0 };
+    packet[0] = Deck;
+    packet[1] = DN2500F_DECK_CMD_LOAD_CD;
+    packet[2] = arg1; /* ???? */
+    packet[3] = to_bcd(NumTracks); /* num tracks? */
+    packet[4] = to_bcd(TotalMinutes);
+    packet[5] = to_bcd(TotalSeconds);
+    packet[6] = to_bcd(TotalFrames);
+
+    packet[7] = 0x0d; /* ???? */
+    packet[8] = 0x2f; /* ???? */
+
+    dn2500f_checksum(packet);
+    return SendRaw((byte*)&packet);
 }
 
-int dn2500f_load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
+bool dn2500f_cmd43(byte Deck, byte arg1, byte arg2)
 {
-	if (Deck != 1 && Deck != 2)
-		return ERR_INVALID_DECK;
+    dn2500f_packet packet = { 0 };
+    packet[0] = Deck;
+    packet[1] = DN2500F_DECK_CMD_DRAWER;
+    packet[2] = arg1; /* play status */
+    packet[3] = arg2; /* ???? */
 
-	/* Send the full "disc" time to the remote. */
-
-	/* 0  1  2  3  4  5  6  7  8  9  10 11 12
-	   01 42 01 01 18 49 66 02 02 00 00 01 10 <- Pete's
-	   02 42 01 12 78 32 07 0D 2F 00 00 01 44 <- Cocus'
-	*/
-	dn2500f_packet packet = { 0 };
-	packet[0] = Deck;
-	packet[1] = DN2500F_CMD_TOTAL_DURATION;
-	packet[2] = 0x01;
-	packet[3] = 0x01; /* Always one track */
-	packet[4] = to_bcd(DurationMinutes); /*                                  */
-	packet[5] = to_bcd(DurationSeconds); /* The duration must be sent as BCD */
-	packet[6] = to_bcd(DurationFrames);  /*                                  */
-	packet[7] = 0x02;
-	packet[8] = 0x02;
-
-	dn2500f_checksum(packet);
-	comms_send((ppacket)&packet);
-	Sleep(100);
-
-	return ERR_OK;
-}
-//
-//int dn2000fmkii_play(byte Deck)
-//{
-//	if (Deck != 1 && Deck != 2)
-//		return ERR_INVALID_DECK;
-//
-//	/* Clear the cue state. */
-//	dn2000fmkii_packet packet = { 0 };
-//	packet[0] = DN2000FMKII_CMD_CUEING;
-//	packet[1] = Deck;
-//	packet[2] = 0x01;
-//	comms_send((ppacket)&packet);
-//
-//	return ERR_OK;
-//}
-//
-
-int dn2500f_pause(byte Deck)
-{
-	if (Deck != 1 && Deck != 2)
-		return ERR_INVALID_DECK;
-
-	/* Set the cue state */
-	dn2500f_packet packet = { 0 };
-
-	comms_send((ppacket)&packet);
-
-	return ERR_OK;
+    dn2500f_checksum(packet);
+    return SendRaw((byte*)&packet);
 }
 
-int dn2500f_update_time(byte Deck, byte Minute, byte Second, byte Frame, bool IsLoaded, bool IsCued, bool IsPaused, bool IsPlaying)
+bool dn2500f_cmd44(byte Deck, DN2500F_PLAYSTATUS Status, DN2500F_TIMEMODE ElapsedRemain, DN2500F_PLAYMODE SingleCont, byte TrackNum, byte Minute, byte Second, byte Frame)
 {
-	if (Deck != 1 && Deck != 2)
-		return ERR_INVALID_DECK;
+    dn2500f_packet packet = { 0 };
+    packet[0] = Deck;
+    packet[1] = DN2500F_CMD_TRACK_POSITION;
+    packet[2] = (byte)Status;
+    packet[3] = (byte)ElapsedRemain | (byte)SingleCont;
+    packet[4] = TrackNum;
+    packet[5] = Minute;
+    packet[6] = Second;
+    packet[7] = Frame;
 
-	/* Set the time display */
-	dn2500f_packet packet = { 0 };
-	packet[0] = Deck;
+    // TODO: move this to update_time
+    if (Status == STATUS_PAUSED)
+    {
+        packet[8] = 0x80;
+        packet[9] = 0x6;
+    }
+    else if (Status == STATUS_CUED)
+    {
+        packet[8] = 0x80;
+    }
+    else if (Status == STATUS_PLAYING)
+    {
+        packet[8] = 0x80;
+        packet[9] = 0x20;
+    }
 
-	packet[1] = DN2500F_CMD_TRACK_POSITION;
-
-//	packet[3] = TimeMode[Deck - 1];
-
-	/* 
-	  0  1  2  3  4  5  6  7  8  9  10 11 12 
-	  01 44 05 03 01 18 45 29 00 20 01 00 F5 play
-	  01 44 04 03 01 18 47 66 80 00 01 01 93 cued
-	  */
-
-	packet[3] = TimeMode[Deck - 1] || PlayMode[Deck - 1];
-
-	if (IsLoaded)
-	{
-		packet[4] = DN2500F_PARAM_TRACK_1;
-		packet[5] = to_bcd(Minute);
-		packet[6] = to_bcd(Second);
-		packet[7] = to_bcd(Frame);
-
-
-		if (IsPlaying)
-		{
-			packet[2] = DN2500F_PARAM_PLAYING;
-
-			packet[9] = 0x20; /* ? */
-		}
-		else if (IsPaused)
-		{
-			// $02 $44 $06 $01 $01 $08 $06 $10 $00 $00 $01 $00 $6D
-			packet[2] = DN2500F_PARAM_PAUSED_PLAYING;
-		}
-		else if (IsCued)
-		{
-			packet[2] = 0x04; // maybe not ????
-
-			//packet[7] = DN2500F_PARAM_STOPPED;
-			//packet[8] = DN2500F_PARAM_CUED;
-		}
-		else
-		{
-			// stopped
-			packet[2] = 0x04; // maybe not ????
-			packet[8] = 0x80;
-		}
-
-		packet[10] = 0x01; /* seems to be always set ? */
-	}
-	else
-	{
-		/* 
-		0  1  2  3  4  5  6  7  8  9  10 11 12
-		01 44 02 03 CC FF FF FF 00 00 CC 04 DF */
-		packet[2] = 0x02; /* ? */
-		packet[4] = DN2500F_PARAM_NO_TRACK;
-		packet[5] = DN2500F_PARAM_NO_TIME;
-		packet[6] = DN2500F_PARAM_NO_TIME;
-		packet[7] = DN2500F_PARAM_NO_TIME;
-		packet[10] = DN2500F_PARAM_NO_TRACK;
-	}
-
-	dn2500f_checksum(packet);
-	comms_send((ppacket)&packet);
-
-	return ERR_OK;
+    packet[10] = 0x1;
+    dn2500f_checksum(packet);
+    return SendRaw((byte*)&packet);
 }
 
-
-int dn2500f_init_decks()
+bool dn2500f_cmd45(byte Deck, byte arg1)
 {
-	if (dn2500f_init_deck(1) != ERR_OK)
-		return ERR_MODEL_UNSUPPORTED;
-	Sleep(50);
+    dn2500f_packet packet = { 0 };
+    packet[0] = Deck;
+    packet[1] = DN2500F_DECK_CMD_CUE;
+    packet[4] = arg1; /* ???? */
 
-	if (dn2500f_init_deck(2) != ERR_OK)
-		return ERR_MODEL_UNSUPPORTED;
-	Sleep(50);
-
-	return ERR_OK;
+    dn2500f_checksum(packet);
+    return SendRaw((byte*)&packet);
 }
 
 int dn2500f_init_deck(byte Deck)
 {
-	/* Assumption: The DN2500F can open switched on when the CD drawers are opened. The player might be sending a signal to the remote to tell it when the drawers are closed.
-	*
-	*  The packet is not fully understood at the moment, but sending the command to the remote seems to satifsy it to accept further commands.
-	*/
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
 
-	dn2500f_packet packet = { 0 };
+    /* works on all states I think */
+    decks[Deck - 1].TimeMode = MODE_REMAIN;
+    decks[Deck - 1].PlayMode = MODE_SINGLE;
+    decks[Deck - 1].PlayState = STATUS_STOPPED; //STATUS_NOT_LOADED; // don't send this, otherwise I can't get rid of it
 
-	// 0  1  2  3  4  5  6  7  8  9  10 11 12
-	// 02 44 09 02 03 ff ff ff 00 00 01 03 52
-	//          |  |                    |  \-> CHECKSUM LOW
-	//          |  |                    \----> CHECKSUM HIGH
-	//          |  \-------------------------> track number
-	//          \----------------------------> 02 = elapsed continuous, 01 = remain single, 00 = elapsed single
-#if 1
-	// $02 $43 $01 $00 $00 $00 $00 $00 $00 $00 $00 $00 $46
-	packet[0] = Deck;
-	packet[1] = DN2500F_DECK_CMD_DRAWER;
-	packet[2] = 0x01; /* ? */
-	packet[5] = 0x00; /* ? */
-#endif
+    decks[Deck - 1].CurrentTrack = 1; // same as above DN2500F_PARAM_NO_TRACK;
+    decks[Deck - 1].CurrentPosition.Minute = DN2500F_PARAM_NO_TIME;
+    decks[Deck - 1].CurrentPosition.Second = DN2500F_PARAM_NO_TIME;
+    decks[Deck - 1].CurrentPosition.Frame = DN2500F_PARAM_NO_TIME;
 
-#if 0
-	// $02 $41 $37 $39 $00 $00 $00 $00 $00 $00 $00 $00 $B3
-	packet[0] = Deck;
-	packet[1] = 0x41;
-	packet[2] = 0x37;
-	packet[3] = 0x39;
-	packet[4] = 0x00;
-	packet[5] = 0x00;
-	packet[6] = 0x00;
-	packet[7] = 0x00;
-	packet[8] = 0x00;
-	packet[9] = 0x00;
-	packet[10] = 0x00;
-#endif
-	dn2500f_checksum(packet);
-	comms_send((ppacket)&packet);
+    decks[Deck - 1].state = NOT_LOADED;
+
+    /* Assumption: The DN2500F can open switched on when the CD drawers are opened. The player might be sending a signal to the remote to tell it when the drawers are closed.
+    *
+    *  The packet is not fully understood at the moment, but sending the command to the remote seems to satifsy it to accept further commands.
+    */
+
+    /*
+    * Turns the M logo off, and seems to reset everything.
+    * $02 $43 $01 $00 $00 $00 $00 $00 $00 $00 $00 $00 $46
+    */
+    dn2500f_cmd43(Deck, 0x1, 0x0);
+    Sleep(20);
+
+    /* $02 $43 $09 $00 $00 $00 $00 $00 $00 $00 $00 $00 $4E */
+    dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0x0); /* not sure */
+    Sleep(20);
+
+    /* $02 $44 $09 $01 $01 $FF $FF $FF $00 $00 $01 $03 $4F */
+    dn2500f_cmd44(Deck, decks[Deck - 1].PlayState, decks[Deck - 1].TimeMode, decks[Deck - 1].PlayMode, to_bcd(decks[Deck - 1].CurrentTrack), 0xff, 0xff, 0xff);
+    Sleep(20);
+
+
+    return ERR_OK;
+}
+
+int dn2500f_load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    /* only possible when the deck is not already loaded */
+    if (decks[Deck - 1].state != NOT_LOADED)
+        return ERR_INVALID_STATE;
+
+    /* switch to PAUSED */
+    decks[Deck - 1].PlayState = STATUS_PAUSED;
+    decks[Deck - 1].state = LOADING_TRACK;
+
+    decks[Deck - 1].CurrentTrack = 1;
+    decks[Deck - 1].TotalTracks = 1;
+
+    decks[Deck - 1].TotalLength.Minute = DurationMinutes;
+    decks[Deck - 1].TotalLength.Second = DurationSeconds;
+    decks[Deck - 1].TotalLength.Frame = DurationFrames;
+
+    /* turns M (cmd total duration): $02 $42 $01 $12 $78 $32 $07 $0D $2F $00 $00 $01 $44 */
+    dn2500f_cmd42(Deck, 0x1, /* num tracks */decks[Deck - 1].TotalTracks, decks[Deck - 1].TotalLength.Minute, decks[Deck - 1].TotalLength.Second, decks[Deck - 1].TotalLength.Frame);
+
+    /* CMD43(03, 0): PLAY led OFF, STOP led OFF: $02 $43 $03 $00 $00 $00 $00 $00 $00 $00 $00 $00 $48 */
+    dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0);
+
+    /* $02 $44 $03 $01 $01 $FF $FF $FF $80 $06 $01 $03 $CF */
+    dn2500f_cmd44(Deck, decks[Deck - 1].PlayState, decks[Deck - 1].TimeMode, decks[Deck - 1].PlayMode, decks[Deck - 1].CurrentTrack, 0xff, 0xff, 0xff);
+
+    return ERR_OK;
+}
+
+int dn2500f_start_cueing(byte Deck)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    if (decks[Deck - 1].state != LOADING_TRACK && decks[Deck - 1].state != PAUSE_WHILE_PLAYING_MODE) // TODO: maybe some other states allow cueing?
+        return ERR_INVALID_STATE;
+
+
+    decks[Deck - 1].PlayState = STATUS_CUED;
+
+    /* CMD43(04, 0): PLAY led OFF, STOP led blinks: $02 $43 $04 $00 $00 $00 $00 $00 $00 $00 $00 $00 $49 */
+    dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0);
+    Sleep(50); // TBD
+
+    if (decks[Deck - 1].state == LOADING_TRACK)
+    {
+        /* CMD43(04, 1): no changes from before: $02 $43 $04 $01 $00 $00 $00 $00 $00 $00 $00 $00 $4A */
+        dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 1);
+        Sleep(50); // TBD
+    }
+    else
+    {
+        /* CMD43(04, 0): PLAY led OFF, STOP led blinks: $02 $43 $04 $00 $00 $00 $00 $00 $00 $00 $00 $00 $49 */
+        dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0);
+        Sleep(50); // TBD
+    }
+
+    decks[Deck - 1].state = CUEING;
+
+    /* $02 $44 $04 $01 $01 $08 $12 $19 $80 $00 $01 $01 $00 */
+    dn2500f_cmd44(Deck, decks[Deck - 1].PlayState,
+        decks[Deck - 1].TimeMode,
+        decks[Deck - 1].PlayMode,
+        to_bcd(decks[Deck - 1].CurrentTrack),
+        to_bcd(decks[Deck - 1].CurrentPosition.Minute),
+        to_bcd(decks[Deck - 1].CurrentPosition.Second),
+        to_bcd(decks[Deck - 1].CurrentPosition.Frame));
+    Sleep(50); // TBD
+
+    return ERR_OK;
+}
+
+int dn2500f_cue(byte Deck, byte Minute, byte Second, byte Frame)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    if (decks[Deck - 1].state != CUEING) // TODO: maybe some other states allow cue?
+        return ERR_INVALID_STATE;
+
+    decks[Deck - 1].PlayState = STATUS_CUED;
+    decks[Deck - 1].state = CUE_MODE;
+
+    decks[Deck - 1].CurrentPosition.Minute = Minute;
+    decks[Deck - 1].CurrentPosition.Second = Second;
+    decks[Deck - 1].CurrentPosition.Frame = Frame;
+
+    /* CMD43(04, 1): CMD43(04, 2): PLAY led OFF, STOP led ON (CUE mode): $02 $43 $04 $02 $00 $00 $00 $00 $00 $00 $00 $00 $4B */
+    dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 2);
+    Sleep(50); // TBD
+
+    /* $02 $45 $00 $00 $02 $00 $00 $00 $00 $00 $00 $00 $49 */
+    dn2500f_cmd45(Deck, 2);
+    Sleep(50);
+
+    /* $02 $44 $04 $01 $01 $08 $12 $19 $80 $00 $01 $01 $00 */
+    dn2500f_cmd44(Deck, decks[Deck - 1].PlayState,
+        decks[Deck - 1].TimeMode,
+        decks[Deck - 1].PlayMode,
+        to_bcd(decks[Deck - 1].CurrentTrack),
+        to_bcd(decks[Deck - 1].CurrentPosition.Minute),
+        to_bcd(decks[Deck - 1].CurrentPosition.Second),
+        to_bcd(decks[Deck - 1].CurrentPosition.Frame));
+
+    return ERR_OK;
+}
+
+int dn2500f_play(byte Deck)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    if (decks[Deck - 1].state != STATUS_CUED && decks[Deck - 1].state != PAUSE_WHILE_PLAYING_MODE) // TODO: maybe some other states allow play?
+        return ERR_INVALID_STATE;
+
+    decks[Deck - 1].PlayState = STATUS_PLAYING;
+    decks[Deck - 1].state = PLAY_MODE;
+
+    /* $02 $43 $05 $00 $00 $00 $00 $00 $00 $00 $00 $00 $4A */
+    dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0);
+    Sleep(50); // TBD
+
+    /* $02 $44 $05 $01 $01 $08 $12 $19 $80 $20 $01 $01 $21 */
+    dn2500f_cmd44(Deck, decks[Deck - 1].PlayState,
+        decks[Deck - 1].TimeMode,
+        decks[Deck - 1].PlayMode,
+        to_bcd(decks[Deck - 1].CurrentTrack),
+        to_bcd(decks[Deck - 1].CurrentPosition.Minute),
+        to_bcd(decks[Deck - 1].CurrentPosition.Second),
+        to_bcd(decks[Deck - 1].CurrentPosition.Frame));
+
+    return ERR_OK;
+}
+
+int dn2500f_pause(byte Deck)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    if (decks[Deck - 1].state != STATUS_PLAYING) // TODO: maybe some other states allow pausing?
+        return ERR_INVALID_STATE;
+
+    if (decks[Deck - 1].state == STATUS_PLAYING)
+    {
+        decks[Deck - 1].PlayState = STATUS_PAUSED_PLAYING;
+        decks[Deck - 1].state = PAUSE_WHILE_PLAYING_MODE;
+
+        /* $02 $43 $06 $00 $00 $00 $00 $00 $00 $00 $00 $00 $4B */
+        dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0);
+        Sleep(50); // TBD
+
+        /* $02 $44 $06 $01 $01 $08 $06 $10 $00 $00 $01 $00 $6D */
+        dn2500f_cmd44(Deck, decks[Deck - 1].PlayState,
+            decks[Deck - 1].TimeMode,
+            decks[Deck - 1].PlayMode,
+            to_bcd(decks[Deck - 1].CurrentTrack),
+            to_bcd(decks[Deck - 1].CurrentPosition.Minute),
+            to_bcd(decks[Deck - 1].CurrentPosition.Second),
+            to_bcd(decks[Deck - 1].CurrentPosition.Frame));
+
+        /* $02 $43 $06 $00 $00 $00 $00 $00 $00 $00 $00 $00 $4B */
+        dn2500f_cmd43(Deck, decks[Deck - 1].PlayState, 0);
+        Sleep(50); // TBD
+
+        /* $02 $45 $00 $00 $02 $00 $00 $00 $00 $00 $00 $00 $49 */
+        dn2500f_cmd45(Deck, 2);
+        Sleep(50);
+    }
+    else
+    {
+        return ERR_INVALID_STATE;
+    }
+
+    return ERR_OK;
+}
+
+int dn2500f_set_play_mode(byte Deck, DN2500F_PLAYMODE Mode)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    decks[Deck - 1].PlayMode = Mode;
+
+    return dn2500f_update_time(Deck);
+}
+
+int dn2500f_set_time_mode(byte Deck, DN2500F_TIMEMODE Mode)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    decks[Deck - 1].TimeMode = Mode;
+
+    return dn2500f_update_time(Deck);
+}
+
+int dn2500f_set_current_time(byte Deck, byte Minutes, byte Seconds, byte Frames)
+{
+    if (Deck != 1 && Deck != 2)
+        return ERR_INVALID_DECK;
+
+    decks[Deck - 1].CurrentPosition.Minute = Minutes;
+    decks[Deck - 1].CurrentPosition.Second = Seconds;
+    decks[Deck - 1].CurrentPosition.Frame = Frames;
+
+    return dn2500f_update_time(Deck);
+}
+
+DN2500F_PLAYSTATUS dn2500f_get_deck_play_stats(byte Deck)
+{
+    if (Deck != 1 && Deck != 2)
+        return STATUS_INVALID;
+
+    return decks[Deck - 1].PlayState;
+}
+
+int dn2500f_update_time(byte Deck)
+{
+	if (Deck != 1 && Deck != 2)
+		return ERR_INVALID_DECK;
+
+    /* $02 $44 $06 $01 $01 $08 $06 $10 $00 $00 $01 $00 $6D */
+    dn2500f_cmd44(Deck, decks[Deck - 1].PlayState,
+        decks[Deck - 1].TimeMode,
+        decks[Deck - 1].PlayMode,
+        to_bcd(decks[Deck - 1].CurrentTrack),
+        to_bcd(decks[Deck - 1].CurrentPosition.Minute),
+        to_bcd(decks[Deck - 1].CurrentPosition.Second),
+        to_bcd(decks[Deck - 1].CurrentPosition.Frame));
 
 	return ERR_OK;
 }
+
+int dn2500f_init(const char* ComPort)
+{
+    comms_init(ComPort, DN2500F_BAUD_RATE, DN2500F_PACKET_SIZE, dn2500f_process_packet);
+    
+    /* Required for the remote to accept commands */
+    if (dn2500f_init_deck(1) != ERR_OK)
+        return ERR_MODEL_UNSUPPORTED;
+    Sleep(50);
+
+    if (dn2500f_init_deck(2) != ERR_OK)
+        return ERR_MODEL_UNSUPPORTED;
+    Sleep(50);
+
+    return ERR_OK;
+}
+
 
 //
 //

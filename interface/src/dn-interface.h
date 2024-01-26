@@ -47,12 +47,15 @@ EXPORT_DECLSPEC void SetKeyChangeCallback(KeyChangeCallback handler);
 
 /* Exported functions to update the driver */
 EXPORT_DECLSPEC int Init(const char *ComPort, byte Model);
-EXPORT_DECLSPEC void Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
-EXPORT_DECLSPEC void UpdateTime(byte Deck, byte Minute, byte Second, byte Frame);
-EXPORT_DECLSPEC void UpdateTimeMode(byte Deck, byte Mode);
-EXPORT_DECLSPEC void Cue(byte Deck, byte Minute, byte Second, byte Frame);
-EXPORT_DECLSPEC void Play(byte Deck);
-EXPORT_DECLSPEC void Pause(byte Deck);
+EXPORT_DECLSPEC int Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
+EXPORT_DECLSPEC int UpdateTime(byte Deck, byte Minute, byte Second, byte Frame);
+EXPORT_DECLSPEC int UpdateTimeMode(byte Deck, byte Mode);
+EXPORT_DECLSPEC int Cue(byte Deck, byte Minute, byte Second, byte Frame);
+EXPORT_DECLSPEC int Play(byte Deck);
+EXPORT_DECLSPEC int Pause(byte Deck);
+
+/* TODO: remove, this is just for testing */
+EXPORT_DECLSPEC bool SendRaw(byte* p);
 
 #ifdef __cplusplus
 }

@@ -98,8 +98,7 @@ EXPORT_DECLSPEC void SetKeyChangeCallback(KeyChangeCallback handler)
 	_keychangecallbackhandler = handler;
 }
 
-
-EXPORT_DECLSPEC void Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
+EXPORT_DECLSPEC int Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
 {
 	switch (_model)
 	{
@@ -110,91 +109,110 @@ EXPORT_DECLSPEC void Load(byte Deck, byte DurationMinutes, byte DurationSeconds,
 		dn2000fmkii_load(Deck, DurationMinutes, DurationSeconds, DurationFrames);
 
 		if (TimeMode[Deck - 1] == DN2000FMKII_PARAM_ELAPSED)
-			dn2000fmkii_cue(Deck, 0, 0, 0);
+			return dn2000fmkii_cue(Deck, 0, 0, 0);
 		else
-			dn2000fmkii_cue(Deck, DurationMinutes, DurationSeconds, DurationFrames);
+			return dn2000fmkii_cue(Deck, DurationMinutes, DurationSeconds, DurationFrames);
 		break;
 
 	case MODEL_DN2500F:
+		return dn2500f_load(Deck, DurationMinutes, DurationSeconds, DurationFrames);
+		break;
+	}
+
+	return ERR_INVALID_DECK;
+}
+
+EXPORT_DECLSPEC int Cue(byte Deck, byte Minute, byte Second, byte Frame)
+{
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
 		CueState[Deck - 1] = true;
-		PlayState[Deck - 1] = DN2500F_PARAM_PAUSED;
-
-		dn2500f_load(Deck, DurationMinutes, DurationSeconds, DurationFrames);
-		break;
-		if (TimeMode[Deck - 1] == DN2500F_PARAM_ELAPSED)
-			dn2500f_cue(Deck, 0, 0, 0);
-		else
-			dn2500f_cue(Deck, DurationMinutes, DurationSeconds, DurationFrames);
-		break;
-	}
-}
-
-EXPORT_DECLSPEC void Cue(byte Deck, byte Minute, byte Second, byte Frame)
-{
-	switch (_model)
-	{
-	case MODEL_DN2000F_MK_II:
-		dn2000fmkii_cue(Deck, Minute, Second, Frame);
+		return dn2000fmkii_cue(Deck, Minute, Second, Frame);
 		break;
 	case MODEL_DN2500F:
-		dn2500f_cue(Deck, Minute, Second, Frame);
+		dn2500f_start_cueing(Deck);
+		//dn2500f_update_time(Deck);
+		return dn2500f_cue(Deck, Minute, Second, Frame);
 		break;
 	}
 
-	CueState[Deck - 1] = true;
+	return ERR_INVALID_DECK;
 }
 
-EXPORT_DECLSPEC void UpdateTime(byte Deck, byte Minute, byte Second, byte Frame)
+EXPORT_DECLSPEC int UpdateTime(byte Deck, byte Minute, byte Second, byte Frame)
 {
 	switch (_model)
 	{
 	case MODEL_DN2000F_MK_II:
-		dn2000fmkii_update_time(Deck, Minute, Second, Frame, true, CueState[Deck - 1], PlayState[Deck - 1] == DN2000FMKII_PARAM_PAUSED, PlayState[Deck - 1] == DN2000FMKII_PARAM_PLAYING);
+		return dn2000fmkii_update_time(Deck, Minute, Second, Frame, true, CueState[Deck - 1], PlayState[Deck - 1] == DN2000FMKII_PARAM_PAUSED, PlayState[Deck - 1] == DN2000FMKII_PARAM_PLAYING);
 		break;
 
 	case MODEL_DN2500F:
-		dn2500f_update_time(Deck, Minute, Second, Frame, true, CueState[Deck - 1], PlayState[Deck - 1] == DN2500F_PARAM_PAUSED, PlayState[Deck - 1] == DN2500F_PARAM_PLAYING);
+		return dn2500f_set_current_time(Deck, Minute, Second, Frame);
 		break;
 	}
+
+	return ERR_INVALID_DECK;
 }
 
-EXPORT_DECLSPEC void UpdateTimeMode(byte Deck, byte Mode)
+EXPORT_DECLSPEC int UpdateTimeMode(byte Deck, byte Mode)
 {
-	TimeMode[Deck - 1] = Mode;
-}
-
-EXPORT_DECLSPEC void Play(byte Deck)
-{
-	CueState[Deck - 1] = false;
 	switch (_model)
 	{
 	case MODEL_DN2000F_MK_II:
+		TimeMode[Deck] = Mode;
+		return ERR_OK;
+		break;
+	case MODEL_DN2500F:
+		return dn2500f_set_time_mode(Deck, Mode);
+		break;
+	}
+
+	return ERR_INVALID_DECK;
+}
+
+EXPORT_DECLSPEC int Play(byte Deck)
+{
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
+		CueState[Deck - 1] = false;
 		PlayState[Deck - 1] = DN2000FMKII_PARAM_PLAYING;
-		dn2000fmkii_play(Deck);
+		return dn2000fmkii_play(Deck);
 		break;
 	case MODEL_DN2500F:
-		PlayState[Deck - 1] = DN2500F_PARAM_PLAYING;
-
-		// TODO: impl
+		return dn2500f_play(Deck);
 		break;
 	}
+
+	return ERR_INVALID_DECK;
 }
 
-EXPORT_DECLSPEC void Pause(byte Deck)
+EXPORT_DECLSPEC int Pause(byte Deck)
 {
-	CueState[Deck - 1] = false;
+
 	switch (_model)
 	{
 	case MODEL_DN2000F_MK_II:
+		CueState[Deck - 1] = false;
 		PlayState[Deck - 1] = DN2000FMKII_PARAM_PLAYING;
-		dn2000fmkii_pause(Deck);
+		return dn2000fmkii_pause(Deck);
 		break;
 	case MODEL_DN2500F:
-		PlayState[Deck - 1] = DN2500F_PARAM_PAUSED;
-		dn2500f_pause(Deck);
+		return dn2500f_pause(Deck);
 		break;
 	}
+
+	return ERR_INVALID_DECK;
 }
+
+
+
+
+
+
+
 
 void DoPlayPause(byte Deck)
 {
@@ -207,7 +225,11 @@ void DoPlayPause(byte Deck)
 			dn2000fmkii_play(Deck);
 		break;
 	case MODEL_DN2500F:
-		// TODO: impl
+		/*switch (dn2500f_get_deck_play_stats(Deck))
+		{
+		case STATUS_PAUSED: dn2500f_play(Deck); break;
+		case STATUS_PLAYING: dn2500f_play(Deck); break;
+		}*/
 		break;
 	}
 
@@ -231,7 +253,15 @@ void DoPitchChange(byte Deck, byte Pitch)
 
 void DoTimeMode(byte Deck, byte mode)
 {
-	TimeMode[Deck] = mode;
+	switch (_model)
+	{
+	case MODEL_DN2000F_MK_II:
+		TimeMode[Deck] = mode;
+		break;
+	case MODEL_DN2500F:
+		//dn2500f_set_time_mode(Deck, mode);
+		break;
+	}
 
 	if (_timemodecallbackhandler != 0)
 		_timemodecallbackhandler(Deck, mode);
@@ -317,4 +347,10 @@ void DoKeyChange(byte Deck, byte Mode, byte IsNegative, byte Key)
 {
 	if (_keychangecallbackhandler != 0)
 		_keychangecallbackhandler(Deck, Mode, KeyByteToFloat(IsNegative, Key));
+}
+
+#include "comms.h"
+EXPORT_DECLSPEC bool SendRaw(byte* p)
+{
+	return comms_send(p);
 }

@@ -115,6 +115,7 @@ namespace PlayerDemo
                 Bass.BASS_ChannelPlay(BassStream, false);
                 IsPlaying = true;
                 _time_ev.Set();
+                Native.Play(_deck_num);
             }
             else
             {
@@ -127,8 +128,9 @@ namespace PlayerDemo
 
                 Duration d = new Duration(time);
 
-                Native.Cue(_deck_num, d.Minutes, d.Seconds, d.Frames);
-                UpdateTime();
+                /*Native.Cue(_deck_num, d.Minutes, d.Seconds, d.Frames);
+                UpdateTime();*/
+                Native.Pause(_deck_num);
 
                 _stutter_ev.Reset();
 

@@ -63,5 +63,13 @@ namespace PlayerDemo
 
         [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
         public static extern void UpdateTimeMode(byte Deck, byte Mode);
+
+
+
+        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Play(byte Deck);
+        
+        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Pause(byte Deck);
     }
 }
