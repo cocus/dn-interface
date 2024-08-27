@@ -11,4 +11,6 @@ int comms_init(const char *port, int baud, int packetsize, comms_packet_receive_
 
 bool comms_send(packet *p);
 
+void comms_deinit(void);
+
 #endif /* !_COMMS_H */

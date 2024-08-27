@@ -15,7 +15,7 @@
 
 
 /* Internal interface functions */
-void DoPlayPause(byte Deck);
+void DoPlayPause(byte Deck, bool EnableBreak);
 void DoCue(byte Deck);
 void DoPitchChange(byte Deck, byte Pitch);
 void DoTimeMode(byte Deck, byte Mode);
@@ -26,6 +26,7 @@ void DoTrackChange(byte Deck, byte To);
 void DoIndexChange(byte Deck, byte To, byte Direction);
 void DoReverse(byte Deck);
 void DoKeyChange(byte Deck, byte Mode, byte IsNegative, byte Key);
+void DoVoiceReducerChange(byte Deck, bool Enabled);
 
 /* Var to hold the current time mode for the decks, either PARAM_ELAPSED or PARAM_REMAIN */
 byte TimeMode[2];

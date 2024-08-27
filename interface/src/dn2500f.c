@@ -50,7 +50,7 @@ void dn2500f_process_packet(ppacket packet)
 
 	case DN2500F_CMD_PLAY:
 	case DN2500F_CMD_PAUSE:
-		DoPlayPause(packet[0]);
+		DoPlayPause(packet[0], packet[2] == 2);
 		break;
 	case DN2500F_CMD_OPEN_CLOSE:
 		DoOpenClose(packet[0]);
@@ -92,9 +92,24 @@ void dn2500f_process_packet(ppacket packet)
 	case DN2500F_CMD_GENERAL_STATUS_CHANGE:
 		DoReverse(packet[0]);
 		break;
+    case DN2500F_CMD_SAMPLER:
+
+        break;
 	case DN2500F_CMD_KEY_CONTROL:
 		DoKeyChange(packet[0], packet[2], packet[3], packet[2] == 1 ? packet[4] : 0); // packet[2] = 0 => off, 1 = custom (see packet[4]), 2 = automatic
 		break;
+
+    case DN2500F_CMD_LOOP_CONTROL:
+        printf("Loop control\n");
+        break;
+
+    case DN2500F_CMD_VOICE_REDUCER:
+        DoVoiceReducerChange(packet[0], packet[2] == 1);
+        break;
+
+    default:
+        printf("Unhandled op %.2x\n", packet[1]);
+        break;
 	}
 }
 
@@ -128,8 +143,8 @@ struct DN2500_DECK
     byte TotalTracks;
 
 } decks[2] =
-{ {NO_INIT, MODE_REMAIN, MODE_SINGLE, STATUS_NOT_LOADED, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME}, DN2500F_PARAM_NO_TRACK, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME}, DN2500F_PARAM_NO_TRACK },
-  {NO_INIT, MODE_REMAIN, MODE_SINGLE, STATUS_NOT_LOADED, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME }, DN2500F_PARAM_NO_TRACK, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME }, DN2500F_PARAM_NO_TRACK } };
+{ {NO_INIT, MODE_REMAIN, MODE_CONTINUE, STATUS_NOT_LOADED, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME}, DN2500F_PARAM_NO_TRACK, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME}, DN2500F_PARAM_NO_TRACK },
+  {NO_INIT, MODE_REMAIN, MODE_CONTINUE, STATUS_NOT_LOADED, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME }, DN2500F_PARAM_NO_TRACK, { DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME, DN2500F_PARAM_NO_TIME }, DN2500F_PARAM_NO_TRACK } };
 
 bool dn2500f_cmd42(byte Deck, byte arg1, byte NumTracks, byte TotalMinutes, byte TotalSeconds, byte TotalFrames)
 {
@@ -245,7 +260,7 @@ int dn2500f_init_deck(byte Deck)
 
     return ERR_OK;
 }
-
+// $02 $44 $04 $01 $01 $08 $12 $19 $80 $00 $01 $01 $00
 int dn2500f_load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames)
 {
     if (Deck != 1 && Deck != 2)
@@ -283,7 +298,7 @@ int dn2500f_start_cueing(byte Deck)
     if (Deck != 1 && Deck != 2)
         return ERR_INVALID_DECK;
 
-    if (decks[Deck - 1].state != LOADING_TRACK && decks[Deck - 1].state != PAUSE_WHILE_PLAYING_MODE) // TODO: maybe some other states allow cueing?
+    if (decks[Deck - 1].state != LOADING_TRACK && decks[Deck - 1].state != PAUSE_WHILE_PLAYING_MODE && decks[Deck - 1].state != PLAY_MODE) // TODO: maybe some other states allow cueing?
         return ERR_INVALID_STATE;
 
 
@@ -478,6 +493,8 @@ int dn2500f_update_time(byte Deck)
         to_bcd(decks[Deck - 1].CurrentPosition.Minute),
         to_bcd(decks[Deck - 1].CurrentPosition.Second),
         to_bcd(decks[Deck - 1].CurrentPosition.Frame));
+    
+    Sleep(38);
 
 	return ERR_OK;
 }
@@ -496,6 +513,11 @@ int dn2500f_init(const char* ComPort)
     Sleep(50);
 
     return ERR_OK;
+}
+
+void dn2500f_deinit(void)
+{
+    return comms_deinit();
 }
 
 

@@ -44,16 +44,18 @@
             this.label5 = new System.Windows.Forms.Label();
             this.cmbxModel = new System.Windows.Forms.ComboBox();
             this.label6 = new System.Windows.Forms.Label();
-            this.btnLog = new System.Windows.Forms.Button();
             this.vScrollBar1 = new System.Windows.Forms.VScrollBar();
             this.vScrollBar2 = new System.Windows.Forms.VScrollBar();
+            this.txtLog = new System.Windows.Forms.TextBox();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.Black;
+            this.panel1.Controls.Add(this.vScrollBar2);
             this.panel1.Controls.Add(this.label3);
+            this.panel1.Controls.Add(this.vScrollBar1);
             this.panel1.Controls.Add(this.label2);
             this.panel1.Controls.Add(this.label1);
             this.panel1.Controls.Add(this.panel3);
@@ -163,6 +165,7 @@
             "COM8:",
             "COM9:",
             "COM10:",
+            "COM252:",
             "COM260:"});
             this.cmbxPort.Location = new System.Drawing.Point(113, 35);
             this.cmbxPort.Name = "cmbxPort";
@@ -180,7 +183,7 @@
             // 
             // btnInit
             // 
-            this.btnInit.Location = new System.Drawing.Point(533, 6);
+            this.btnInit.Location = new System.Drawing.Point(673, 74);
             this.btnInit.Name = "btnInit";
             this.btnInit.Size = new System.Drawing.Size(75, 23);
             this.btnInit.TabIndex = 3;
@@ -232,19 +235,9 @@
             this.label6.TabIndex = 7;
             this.label6.Text = "Model:";
             // 
-            // btnLog
-            // 
-            this.btnLog.Location = new System.Drawing.Point(533, 35);
-            this.btnLog.Name = "btnLog";
-            this.btnLog.Size = new System.Drawing.Size(75, 23);
-            this.btnLog.TabIndex = 8;
-            this.btnLog.Text = "Log...";
-            this.btnLog.UseVisualStyleBackColor = true;
-            this.btnLog.Click += new System.EventHandler(this.btnLog_Click);
-            // 
             // vScrollBar1
             // 
-            this.vScrollBar1.Location = new System.Drawing.Point(128, 275);
+            this.vScrollBar1.Location = new System.Drawing.Point(6, 30);
             this.vScrollBar1.Name = "vScrollBar1";
             this.vScrollBar1.Size = new System.Drawing.Size(17, 80);
             this.vScrollBar1.TabIndex = 9;
@@ -252,20 +245,27 @@
             // 
             // vScrollBar2
             // 
-            this.vScrollBar2.Location = new System.Drawing.Point(549, 275);
+            this.vScrollBar2.Location = new System.Drawing.Point(707, 30);
             this.vScrollBar2.Name = "vScrollBar2";
             this.vScrollBar2.Size = new System.Drawing.Size(17, 80);
             this.vScrollBar2.TabIndex = 9;
             this.vScrollBar2.Scroll += new System.Windows.Forms.ScrollEventHandler(this.vScrollBar2_Scroll);
             // 
+            // txtLog
+            // 
+            this.txtLog.Location = new System.Drawing.Point(13, 259);
+            this.txtLog.Multiline = true;
+            this.txtLog.Name = "txtLog";
+            this.txtLog.ReadOnly = true;
+            this.txtLog.Size = new System.Drawing.Size(735, 305);
+            this.txtLog.TabIndex = 9;
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(760, 433);
-            this.Controls.Add(this.vScrollBar2);
-            this.Controls.Add(this.vScrollBar1);
-            this.Controls.Add(this.btnLog);
+            this.ClientSize = new System.Drawing.Size(760, 576);
+            this.Controls.Add(this.txtLog);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.cmbxModel);
             this.Controls.Add(this.label5);
@@ -303,9 +303,9 @@
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.ComboBox cmbxModel;
         private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Button btnLog;
         private System.Windows.Forms.VScrollBar vScrollBar1;
         private System.Windows.Forms.VScrollBar vScrollBar2;
+        private System.Windows.Forms.TextBox txtLog;
     }
 }
 

@@ -16,7 +16,7 @@ typedef unsigned char byte;
 /* Callback signatures */
 typedef void(*PitchChangeCallback)(byte Deck, float PitchPercent);
 typedef void(*TimeModeCallback)(byte Deck, byte Mode);
-typedef void(*PlayPauseCallback)(byte Deck, bool IsPlaying);
+typedef void(*PlayPauseCallback)(byte Deck, bool IsPlaying, bool EnableBreak);
 typedef void(*CueCallback)(byte Deck);
 typedef void(*SearchCallback)(byte Deck, byte Direction, byte Speed);
 typedef void(*ScanCallback)(byte Deck, byte Direction, byte Speed);
@@ -24,6 +24,8 @@ typedef void(*OpenCloseCallback)(byte Deck);
 typedef void(*TrackChangeCallback)(byte Deck, byte To);
 typedef void(*IndexChangeCallback)(byte Deck, byte To, byte Direction);
 typedef void(*ReverseCallback)(byte Deck);
+typedef void(*PlayModeChangeCallback)(byte Deck, byte Mode);
+typedef void(*VoiceReducerChangeCallback)(byte Deck, bool Enabled);
 typedef void(*KeyChangeCallback)(byte Deck, byte Mode, float Key);
 
 #ifdef DNINTERFACE_EXPORTS
@@ -43,10 +45,13 @@ EXPORT_DECLSPEC void SetOpenCloseCallback(OpenCloseCallback handler);
 EXPORT_DECLSPEC void SetTrackChangeCallback(TrackChangeCallback handler);
 EXPORT_DECLSPEC void SetIndexChangeCallback(IndexChangeCallback handler);
 EXPORT_DECLSPEC void SetReverseCallback(ReverseCallback handler);
+EXPORT_DECLSPEC void SetPlayModeChangeCallback(PlayModeChangeCallback handler);
+EXPORT_DECLSPEC void SetVoiceReducerChangeCallback(VoiceReducerChangeCallback handler);
 EXPORT_DECLSPEC void SetKeyChangeCallback(KeyChangeCallback handler);
 
 /* Exported functions to update the driver */
 EXPORT_DECLSPEC int Init(const char *ComPort, byte Model);
+EXPORT_DECLSPEC int DeInit(void);
 EXPORT_DECLSPEC int Load(byte Deck, byte DurationMinutes, byte DurationSeconds, byte DurationFrames);
 EXPORT_DECLSPEC int UpdateTime(byte Deck, byte Minute, byte Second, byte Frame);
 EXPORT_DECLSPEC int UpdateTimeMode(byte Deck, byte Mode);

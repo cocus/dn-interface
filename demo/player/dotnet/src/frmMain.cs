@@ -4,11 +4,13 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Un4seen.Bass;
+using static PlayerDemo.Native;
 
 namespace PlayerDemo
 {
@@ -22,65 +24,110 @@ namespace PlayerDemo
         {
             InitializeComponent();
 
-            cmbxPort.SelectedIndex = 6;
-
             foreach (var d in Bass.BASS_GetDeviceInfos())
                 cmbxOutput1.Items.Add(d.name);
 
-            _frmdebug = new frmDebug();
-            _frmdebug.VisibleChanged += delegate (object sender, EventArgs e)
-            {
-                btnLog.Enabled = !_frmdebug.Visible;
-            };
+            cmbxOutput1.SelectedIndex = cmbxOutput1.Items.Count - 1;
+            cmbxPort.SelectedIndex = 6;
+            cmbxModel.SelectedIndex = 1;
 
         }
-
-
+        public void Log(string Event)
+        {
+            this.Invoke(new MethodInvoker(() =>
+            {
+                txtLog.AppendText(Event + "\r\n");
+            }));
+        }
         private void PitchChangeHandler(byte Deck, float Pitch)
         {
-            _frmdebug.Log(string.Format("Deck {0}. Pitch change. New Pitch: {1}%", Deck, Pitch));
+            Log(string.Format("Deck {0}. Pitch change. New Pitch: {1}%", Deck, Pitch));
             if ((Deck == 1) || (Deck == 2))
                 Decks[Deck - 1].ChangePitch(Pitch);
         }
 
         private void TimeModeHandler(byte Deck, byte Mode)
         {
-            _frmdebug.Log(string.Format("Deck {0}. Time mode change. New Mode: {1}", Deck, Mode == 1 ? "Elapsed" : "Remain"));
+            Log(string.Format("Deck {0}. Time mode change. New Mode: {1}", Deck, Mode == 1 ? "Elapsed" : "Remain"));
             if ((Deck == 1) || (Deck == 2))
                 Decks[Deck - 1].ChangeTime(Mode);        
         }
 
-        private void PlayPauseHandler(byte Deck)
+        private void PlayPauseHandler(byte Deck, bool IsPlaying, bool EnableBreak)
         {
-            _frmdebug.Log(string.Format("Deck {0}. Play/Pause", Deck));
+            Log(string.Format("Deck {0}. Play/Pause, playing? {1}, break? {2}", Deck, IsPlaying, EnableBreak));
             if ((Deck == 1) || (Deck == 2))
                 Decks[Deck - 1].PlayPause();
         }
 
         private void CueHandler(byte Deck)
         {
-            _frmdebug.Log(string.Format("Deck {0}. Cue", Deck));
+            Log(string.Format("Deck {0}. Cue", Deck));
             if ((Deck == 1) || (Deck == 2))
-                Decks[Deck - 1].Cue();
-        }
-
-        private void ScanHandler(byte Deck, byte Direction, byte Speed)
-        {
-            _frmdebug.Log(string.Format("Deck {0}. Scan change. New Direction: {1}, Speed: {2}", Deck, Direction, Speed));
-            if ((Deck == 1) || (Deck == 2))
-                Decks[Deck - 1].Scan(Direction, Speed);
+            {
+                if (Decks[Deck-1].IsCueing == false)
+                    Decks[Deck - 1].Cue();
+            }
         }
 
         private void SearchHandler(byte Deck, byte Direction, byte Speed)
         {
-            _frmdebug.Log(string.Format("Deck {0}. SearchHandler, {1} {2}", Deck, Direction, Speed));
+            Log(string.Format("Deck {0}. SearchHandler, {1} {2}", Deck, Direction, Speed));
             if ((Deck == 1) || (Deck == 2))
                 Decks[Deck - 1].Search(Direction, Speed);
         }
-      
+
+        private void ScanHandler(byte Deck, byte Direction, byte Speed)
+        {
+            Log(string.Format("Deck {0}. Scan change. New Direction: {1}, Speed: {2}", Deck, Direction, Speed));
+            if ((Deck == 1) || (Deck == 2))
+                Decks[Deck - 1].Scan(Direction, Speed);
+        }
+
+        private void OpenCloseHandler(byte Deck)
+        {
+            Log(string.Format("Deck {0}. Open/Close", Deck));
+        }
+
+        private void TrackChangeHandler(byte Deck, byte To)
+        {
+            Log(string.Format("Deck {0}. Track change, to {1}", Deck, To));
+        }
+
+        private void IndexChangeHandler(byte Deck, byte To, byte Direction)
+        {
+            Log(string.Format("Deck {0}. Index change, to {1}, direction {2}", Deck, To, Direction));
+        }
+
+        private void ReverseHandler(byte Deck)
+        {
+            Log(string.Format("Deck {0}. Reverse", Deck));
+        }
+
+        private void PlayModeChangeHandler(byte Deck, byte Mode)
+        {
+            Log(string.Format("Deck {0}. Play mode changed to {1}", Deck, Mode));
+        }
+
+        private void VoiceReducerChangeHandler(byte Deck, bool Enabled)
+        {
+            Log(string.Format("Deck {0}. Voice reducer set to {1}", Deck, Enabled));
+        }
+
+
+        private void KeyChangeHandler(byte Deck, byte Mode, float Key)
+        {
+            Log(string.Format("Deck {0}. Key changed to {2}, mode {1}", Deck, Mode, Key));
+        }
+
         private void btnInit_Click(object sender, EventArgs e)
         {
             var res = Native.Init((string)cmbxPort.SelectedItem, (byte)cmbxModel.SelectedIndex);
+
+            Log(String.Format("Init({0}, {1}) = {2}", cmbxPort.SelectedItem, cmbxModel.SelectedIndex, res));
+
+            if (res != 0)
+                return;
 
             Bass.BASS_Init(cmbxOutput1.SelectedIndex, 44100, BASSInit.BASS_DEVICE_DEFAULT, IntPtr.Zero);          
 
@@ -94,13 +141,21 @@ namespace PlayerDemo
             Native.SetCueCallback(CueHandler);
             Native.SetSearchCallback(SearchHandler);
             Native.SetScanCallback(ScanHandler);
+            Native.SetOpenCloseCallback(OpenCloseHandler);
+            Native.SetTrackChangeCallback(TrackChangeHandler);
+            Native.SetIndexChangeCallback(IndexChangeHandler);
+            Native.SetReverseCallback(ReverseHandler);
+            Native.SetPlayModeChangeCallback(PlayModeChangeHandler);
+            Native.SetVoiceReducerChangeCallback(VoiceReducerChangeHandler);
+            Native.SetKeyChangeCallback(KeyChangeHandler);
 
             cmbxOutput1.Enabled = false;
             cmbxPort.Enabled = false;
+            cmbxModel.Enabled = false;
             btnInit.Enabled = false;
 
-            Native.UpdateTime(1, 11, 22, 33);
-            Native.UpdateTime(2, 11, 22, 33);
+            //Native.UpdateTime(1, 11, 22, 33);
+            //Native.UpdateTime(2, 11, 22, 33);
         }
        
         private void btnOpen1_Click(object sender, EventArgs e)
@@ -136,8 +191,12 @@ namespace PlayerDemo
         {
             if (Decks != null)
             {
-                Decks[0]._time_ev.Set();
-                Decks[1]._time_ev.Set();
+                Decks[0].Dispose();
+                Decks[1].Dispose();
+                Decks[0] = null;
+                Decks[1] = null;
+
+                var res = Native.DeInit();
             }
         }
 

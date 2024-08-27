@@ -20,6 +20,9 @@ HANDLE _comport = 0;
 OVERLAPPED _read_overlapped = { 0 };
 OVERLAPPED _write_overlapped = { 0 };
 
+HANDLE _mutex;
+DWORD _thread_id;
+
 int _packet_size = 0;
 
 DWORD WINAPI read_from_remote(LPVOID lpParam);
@@ -58,15 +61,23 @@ int comms_init(const char *port, int baud, int packetsize, comms_packet_receive_
 	_read_overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	_write_overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
+	_mutex = CreateMutex(NULL, TRUE, NULL);
+
 	/* Create the read thread */
-	DWORD tid = 0;
-	bool readthread = CreateThread(NULL, 0, read_from_remote, NULL, 0, &tid);
+	bool readthread = CreateThread(NULL, 0, read_from_remote, NULL, 0, &_thread_id);
 
 	if (!readthread)
 		return ERR_COMPORT_INIT_READ_THREAD;
 
 	return ERR_OK;
 }
+
+void comms_deinit(void)
+{
+	ReleaseMutex(_mutex);
+	WaitForSingleObject(_thread_id, INFINITE);
+}
+
 
 /* Sends a packet */
 bool comms_send(packet *p)
@@ -84,6 +95,11 @@ DWORD WINAPI read_from_remote(LPVOID lpParam)
 	/* Read buffer */
 	ppacket packet = (ppacket)malloc(_packet_size);
 	
+	HANDLE hHandles[] = {
+		_read_overlapped.hEvent,
+		_mutex
+	};
+
 	/* Loop forever */
 	for (;;)
 	{
@@ -96,7 +112,11 @@ DWORD WINAPI read_from_remote(LPVOID lpParam)
 			DWORD read = 0;
 			bool res3 = ReadFile(_comport, packet + Offset, _packet_size - TotalRead, &read, &_read_overlapped);
 
-			WaitForSingleObject(_read_overlapped.hEvent, INFINITE);
+			DWORD ret = WaitForMultipleObjects(2, hHandles, FALSE, INFINITE);
+			if ((ret == WAIT_OBJECT_0 + 1) || (ret == WAIT_ABANDONED))
+			{
+				return;
+			}
 
 			/* Wait for the read to finish */
 			GetOverlappedResult(_comport, &_read_overlapped, &read, FALSE);

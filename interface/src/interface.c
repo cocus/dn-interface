@@ -23,6 +23,8 @@ OpenCloseCallback _openclosecallbackhandler = 0;
 TrackChangeCallback _trackchangecallbackhandler = 0;
 IndexChangeCallback _indexchangecallbackhandler = 0;
 ReverseCallback _reversecallbackhandler = 0;
+PlayModeChangeCallback _playmodechangecallbackhandler = 0;
+VoiceReducerChangeCallback _voicereducerchangecallbackhandler = 0;
 KeyChangeCallback _keychangecallbackhandler = 0;
 
 byte _model = -1;
@@ -38,6 +40,19 @@ EXPORT_DECLSPEC int Init(const char *ComPort, byte Model)
 	case MODEL_DN2500F:
 		_model = Model;
 		return dn2500f_init(ComPort);
+	}
+
+	return ERR_MODEL_UNSUPPORTED;
+}
+
+EXPORT_DECLSPEC int DeInit(void)
+{
+	switch (_model)
+	{
+	case MODEL_DN2500F:
+		_model = -1;
+		dn2500f_deinit();
+		return 0;
 	}
 
 	return ERR_MODEL_UNSUPPORTED;
@@ -92,7 +107,14 @@ EXPORT_DECLSPEC void SetReverseCallback(ReverseCallback handler)
 {
 	_reversecallbackhandler = handler;
 }
-
+EXPORT_DECLSPEC void SetPlayModeChangeCallback(PlayModeChangeCallback handler)
+{
+	_playmodechangecallbackhandler = handler;
+}
+EXPORT_DECLSPEC void SetVoiceReducerChangeCallback(VoiceReducerChangeCallback handler)
+{
+	_voicereducerchangecallbackhandler = handler;
+}
 EXPORT_DECLSPEC void SetKeyChangeCallback(KeyChangeCallback handler)
 {
 	_keychangecallbackhandler = handler;
@@ -214,7 +236,7 @@ EXPORT_DECLSPEC int Pause(byte Deck)
 
 
 
-void DoPlayPause(byte Deck)
+void DoPlayPause(byte Deck, bool EnableBreak)
 {
 	switch (_model)
 	{
@@ -234,7 +256,7 @@ void DoPlayPause(byte Deck)
 	}
 
 	if (_playpausecallbackhandler != 0)
-		_playpausecallbackhandler(Deck, PlayState[Deck - 1]);
+		_playpausecallbackhandler(Deck, PlayState[Deck - 1] == STATUS_PLAYING, EnableBreak);
 }
 
 void DoCue(byte Deck)
@@ -347,6 +369,12 @@ void DoKeyChange(byte Deck, byte Mode, byte IsNegative, byte Key)
 {
 	if (_keychangecallbackhandler != 0)
 		_keychangecallbackhandler(Deck, Mode, KeyByteToFloat(IsNegative, Key));
+}
+
+void DoVoiceReducerChange(byte Deck, bool Enabled)
+{
+	if (_voicereducerchangecallbackhandler != 0)
+		_voicereducerchangecallbackhandler(Deck, Enabled);
 }
 
 #include "comms.h"

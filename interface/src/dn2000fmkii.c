@@ -51,7 +51,7 @@ void dn2000fmkii_process_packet(ppacket packet)
 		break;
 
 	case DN2000FMKII_CMD_PLAY_PAUSE:
-		DoPlayPause(packet[0]);
+		DoPlayPause(packet[0], false);
 		break;
 
 	case DN2000FMKII_CMD_CUE:

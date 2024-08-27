@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ using Un4seen.Bass;
 
 namespace PlayerDemo
 {
-    public class Deck
+    public class Deck : IDisposable
     {
         private class Duration
         {
@@ -26,9 +27,10 @@ namespace PlayerDemo
 
         private void StutterThread()
         {
-            while (true)
+            while (Running)
             {
                 _stutter_ev.WaitOne();
+                if (Running)
                 {
                     Bass.BASS_ChannelSetPosition(BassStream, CuePos);
                     Bass.BASS_ChannelPlay(BassStream, false);
@@ -39,11 +41,14 @@ namespace PlayerDemo
 
         private void TimeThread()
         {
-            while (true)
+            while (Running)
             {
                 _time_ev.WaitOne();
-                UpdateTime();
-                Thread.Sleep(10);
+                if (Running)
+                {
+                    UpdateTime();
+                    //Thread.Sleep(10);
+                }
             }
         }
 
@@ -52,6 +57,8 @@ namespace PlayerDemo
 
         public ManualResetEvent _time_ev = new ManualResetEvent(false);
         private Thread _time_thread;
+
+        private bool AlreadyPlayed = false;
 
         private byte _deck_num = 0;
 
@@ -62,6 +69,8 @@ namespace PlayerDemo
         public long CuePos = 0;
         public bool IsPlaying = false;
         public bool IsCueing = false;
+
+        private bool Running = true;
 
         public Deck(byte DeckNum)
         {
@@ -74,6 +83,17 @@ namespace PlayerDemo
             _time_ev = new ManualResetEvent(false);
             _time_thread = new Thread(new ThreadStart(TimeThread));
             _time_thread.Start();
+        }
+
+
+        public void Dispose()
+        {
+            Running = false;
+            _stutter_ev.Set();
+            _time_ev.Set();
+
+            _stutter_thread.Join();
+            _time_thread.Join();
         }
 
         private void UpdateTime()
@@ -114,7 +134,16 @@ namespace PlayerDemo
             {
                 Bass.BASS_ChannelPlay(BassStream, false);
                 IsPlaying = true;
+
+                IsCueing = false;
+
+                if (!AlreadyPlayed)
+                {
+                    Native.UpdateTimeMode(_deck_num, 2); // switch to elapsed
+                    AlreadyPlayed = true;
+                }
                 _time_ev.Set();
+
                 Native.Play(_deck_num);
             }
             else
@@ -141,6 +170,9 @@ namespace PlayerDemo
         public void Cue()
         {
             _time_ev.Reset();
+
+            _stutter_ev.Reset();
+
             Bass.BASS_ChannelPause(BassStream);
             Bass.BASS_ChannelSetPosition(BassStream, CuePos);
             double time = Bass.BASS_ChannelBytes2Seconds(BassStream, CuePos);
@@ -149,8 +181,7 @@ namespace PlayerDemo
 
             Native.Cue(_deck_num, d.Minutes, d.Seconds, d.Frames);
             UpdateTime();
-
-            _stutter_ev.Reset();
+            IsCueing = true;
 
             IsPlaying = false;
         }
@@ -158,7 +189,7 @@ namespace PlayerDemo
         public void Scan(byte Direction, Byte Speed)
         {
             IsPlaying = false;
-            _time_ev.Reset();
+            //_time_ev.Reset();
             Bass.BASS_ChannelStop(BassStream);
             CuePos = Bass.BASS_ChannelGetPosition(BassStream);
             _stutter_ev.Set();
@@ -173,7 +204,7 @@ namespace PlayerDemo
             CuePos = Bass.BASS_ChannelSeconds2Bytes(BassStream, time);
 
             Bass.BASS_ChannelSetPosition(BassStream, CuePos);
-            UpdateTime();
+            //UpdateTime();
         }
 
         public void Search(byte Direction, Byte Speed)
@@ -181,14 +212,16 @@ namespace PlayerDemo
             if (IsPlaying)
             {
                 IsPlaying = false;
-                _time_ev.Reset();
+                //_time_ev.Reset();
                 Bass.BASS_ChannelStop(BassStream);
                 CuePos = Bass.BASS_ChannelGetPosition(BassStream);
+
+                Native.Pause(_deck_num);
             }
 
             _stutter_ev.Reset();
             Bass.BASS_ChannelSetPosition(BassStream, CuePos);
-            UpdateTime();
+            //UpdateTime();
 
             _stutter_ev.Set();
 
@@ -202,11 +235,24 @@ namespace PlayerDemo
             CuePos = Bass.BASS_ChannelSeconds2Bytes(BassStream, time);
 
             Bass.BASS_ChannelSetPosition(BassStream, CuePos);
-            UpdateTime();
+            //UpdateTime();
         }
+
+        public void Unload()
+        {
+            if (BassStream != 0)
+            {
+                Bass.BASS_StreamFree(BassStream);
+            }
+        }
+
 
         public void LoadTrack(string Filename)
         {
+            if (BassStream != 0)
+            {
+                Bass.BASS_StreamFree(BassStream);
+            }
             BassStream = Bass.BASS_StreamCreateFile(Filename, 0, 0, BASSFlag.BASS_DEFAULT);
             BassDuration = Bass.BASS_ChannelGetLength(BassStream, BASSMode.BASS_POS_BYTES);
             double time = Bass.BASS_ChannelBytes2Seconds(BassStream, BassDuration);
@@ -215,11 +261,18 @@ namespace PlayerDemo
 
             Native.Load(_deck_num, d.Minutes, d.Seconds, d.Frames);
 
+            Native.UpdateTimeMode(_deck_num, 1); // switch to remain
+
+
+            AlreadyPlayed = false;
+
             CuePos = 0;
 
             IsPlaying = false;
 
+            Native.Cue(_deck_num, d.Minutes, d.Seconds, d.Frames);
             UpdateTime();
         }
+
     }
 }
